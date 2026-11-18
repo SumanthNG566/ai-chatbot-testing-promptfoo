@@ -1,0 +1,19 @@
+1. Manual Testing Foundations
+   Duration: 4 weeks | Mode: Online | Level: Beginner
+   Fee: Rs. 8,000
+   You learn: test cases, bug reports, SDLC and STLC, JIRA basics
+
+2. Selenium with Java
+   Duration: 8 weeks | Mode: Weekend batch (Sat and Sun) | Level: Intermediate
+   Fee: Rs. 18,000
+   You learn: Java basics, Selenium WebDriver, TestNG, Page Object Model
+
+3. API Testing with Postman
+   Duration: 3 weeks | Mode: Online | Level: Beginner
+   Fee: Rs. 6,000
+   You learn: REST APIs, Postman collections, status codes, basic automation
+
+4. Python for Testers
+   Duration: 6 weeks | Mode: Online | Level: Beginner
+   Fee: not published yet (a counsellor will share it)
+   You learn: Python basics, pytest, simple test scripts

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learner Bot Run Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; diagrams sit in wide scrollable panels; a "cast" grid and a one-test trace strip frame them. */
+:root {
+  --bg: #f4f7f7;
+  --surface: #ffffff;
+  --fg: #142321;
+  --muted: #566764;
+  --line: #d5e0de;
+  --accent: #0d6b74;
+  --accent-soft: #e0f0f1;
+  --code-bg: #eef3f3;
+  --pass: #1d7f47;
+  --pass-soft: #e2f3e8;
+  --fail: #b93b28;
+  --fail-soft: #f8e5e1;
+  --err: #95650a;
+  --err-soft: #f7edd6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1615; --surface: #16211f; --fg: #e2ecea; --muted: #9bb0ac; --line: #2a3a37;
+    --accent: #58c6cf; --accent-soft: #15353a; --code-bg: #1b2826;
+    --pass: #5fcf8d; --pass-soft: #163323; --fail: #f08a76; --fail-soft: #3a1d18;
+    --err: #e8b955; --err-soft: #352a12;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1615; --surface: #16211f; --fg: #e2ecea; --muted: #9bb0ac; --line: #2a3a37;
+  --accent: #58c6cf; --accent-soft: #15353a; --code-bg: #1b2826;
+  --pass: #5fcf8d; --pass-soft: #163323; --fail: #f08a76; --fail-soft: #3a1d18;
+  --err: #e8b955; --err-soft: #352a12;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 500;
+}
+section, header { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.lede { font-size: 1.12rem; color: var(--muted); }
+
+.cmd {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  padding: 12px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Cast grid */
+.cast { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.actor {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.actor .tag { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.actor p { font-size: 0.93rem; }
+.actor .like { color: var(--accent); font-weight: 500; font-size: 0.9rem; }
+
+/* Diagram panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; overflow-x: auto; }
+.panel pre.mermaid { margin: 0; background: transparent; min-width: 560px; display: flex; justify-content: center; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid currentColor;
+}
+.chip.pass { color: var(--pass); background: var(--pass-soft); }
+.chip.fail { color: var(--fail); background: var(--fail-soft); }
+.chip.err  { color: var(--err);  background: var(--err-soft); }
+
+/* Step lists */
+.steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.steps li {
+  display: grid; grid-template-columns: 5.5rem 1fr; gap: 14px; align-items: baseline;
+  padding: 12px 0; border-top: 1px solid var(--line);
+}
+.steps li:first-child { border-top: 0; }
+.steps .num { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); font-weight: 500; }
+.steps li > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.steps .why { color: var(--muted); font-size: 0.93rem; }
+
+/* One-test trace */
+.trace {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface);
+}
+.hop { padding: 16px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--line); min-width: 0; }
+.hop:last-child { border-right: 0; }
+.hop .label { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.hop .val {
+  font-family: var(--font-mono); font-size: 0.8rem; background: var(--code-bg);
+  padding: 8px 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word;
+}
+.hop .check { font-family: var(--font-mono); font-size: 0.82rem; display: flex; flex-direction: column; gap: 4px; }
+.ok { color: var(--pass); }
+.hop.result { background: var(--pass-soft); justify-content: center; align-items: flex-start; }
+.hop.result .big { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--pass); line-height: 1; }
+
+/* Wire view */
+.wire { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.wire figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wire figcaption { font-size: 0.88rem; color: var(--muted); }
+.wire pre {
+  margin: 0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px; overflow-x: auto; white-space: pre;
+}
+.wire .k { color: var(--accent); }
+
+/* Outcome table */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.93rem; background: var(--surface); border: 1px solid var(--line); }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+
+.note { font-size: 0.92rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 14px; }
+
+@media (max-width: 560px) {
+  .steps li { grid-template-columns: 1fr; gap: 4px; }
+  .hop { border-right: 0; border-bottom: 1px solid var(--line); }
+  .hop:last-child { border-bottom: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">ai-chatbot-testing-promptfoo · how a test run works</span>
+    <h1>Learner Bot Run Map</h1>
+    <p class="lede">What happens after you press Enter on this command, drawn two ways. The flow diagram shows the steps in order. The handshake diagram shows who talks to whom.</p>
+    <code class="cmd">npx.cmd promptfoo@latest eval -c learner_bot_eval/promptfooconfig.yaml --no-cache --env-file .env</code>
+  </header>
+
+  <section>
+    <span class="eyebrow">Meet the cast</span>
+    <h2>Who is involved</h2>
+    <div class="cast">
+      <div class="actor">
+        <span class="tag">you</span>
+        <h3>You</h3>
+        <p>Type the command and read the results.</p>
+        <span class="like">Like the parent who drops off the homework.</span>
+      </div>
+      <div class="actor">
+        <span class="tag">PowerShell</span>
+        <h3>Terminal</h3>
+        <p>The window in VS Code where you type commands.</p>
+        <span class="like">Like the front desk that passes your note along.</span>
+      </div>
+      <div class="actor">
+        <span class="tag">npx + promptfoo</span>
+        <h3>Promptfoo</h3>
+        <p>Runs every test, asks the AI, checks the answers.</p>
+        <span class="like">Like the teacher with a checklist.</span>
+      </div>
+      <div class="actor">
+        <span class="tag">prompt.txt · courses.txt · .yaml · .env</span>
+        <h3>Your files</h3>
+        <p>The bot's rules, the course list, the tests and your secret key.</p>
+        <span class="like">Like a rule card, a brochure, an exam paper and a library card.</span>
+      </div>
+      <div class="actor">
+        <span class="tag">gemini-3.5-flash-lite</span>
+        <h3>Gemini (Google)</h3>
+        <p>The AI on Google's computers that writes the chatbot's replies.</p>
+        <span class="like">Like the receptionist answering learners.</span>
+      </div>
+      <div class="actor">
+        <span class="tag">localhost:15500</span>
+        <h3>Results viewer</h3>
+        <p>A small website on your own PC that shows the PASS / FAIL table.</p>
+        <span class="like">Like the report card, opened in the browser.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Diagram 1 · flow</span>
+    <h2>The flow: what happens, in order</h2>
+    <p>Read it top to bottom. The loop in the middle runs once for each of the 7 learner messages. Every test ends in one of three colours.</p>
+    <div class="legend">
+      <span class="chip pass">PASS · answered and followed every rule</span>
+      <span class="chip fail">FAIL · answered but broke a rule</span>
+      <span class="chip err">ERROR · no answer came back</span>
+    </div>
+    <div class="panel">
+<pre class="mermaid">
+flowchart TD
+  A(["You type the command in the terminal"]) --> B["npx starts Promptfoo"]
+  B --> C["Read promptfooconfig.yaml - 7 tests and their checks"]
+  C --> D["Read prompt.txt - the bot's rule card"]
+  D --> E["Read courses.txt - the course brochure"]
+  E --> F["Read GOOGLE_API_KEY from .env"]
+  F --> G["Pick the next learner message"]
+  G --> H["Build the full prompt: rules + courses + message"]
+  H --> I["Send it + the key to Gemini over the internet"]
+  I --> J{"Did Gemini answer?"}
+  J -->|"No - wrong key, retired model or busy"| K["ERROR"]
+  J -->|"Yes"| L["Check the reply against every rule"]
+  L --> M{"Every rule OK?"}
+  M -->|"Yes"| N["PASS"]
+  M -->|"No"| O["FAIL"]
+  K --> P{"More messages left?"}
+  N --> P
+  O --> P
+  P -->|"Yes"| G
+  P -->|"No"| Q["Print the table and summary in the terminal"]
+  Q --> R["Save the results on your PC"]
+  R --> S(["Later: promptfoo view shows them at localhost:15500"])
+  classDef pass fill:#1d7f47,stroke:#1d7f47,color:#ffffff
+  classDef fail fill:#b93b28,stroke:#b93b28,color:#ffffff
+  classDef err fill:#d8a033,stroke:#d8a033,color:#1a1a1a
+  class N pass
+  class O fail
+  class K err
+</pre>
+    </div>
+    <ol class="steps">
+      <li><span class="num">Start</span><div><strong>You press Enter.</strong><span class="why">npx fetches Promptfoo the first time and reuses it after that.</span></div></li>
+      <li><span class="num">Read</span><div><strong>Promptfoo reads your four files.</strong><span class="why">The config says which AI and which 7 tests, prompt.txt holds the bot's 8 rules, courses.txt holds the course list, and .env holds the key. Nothing is sent anywhere yet.</span></div></li>
+      <li><span class="num">Build</span><div><strong>It fills in the blanks.</strong><span class="why"><code>{{courses}}</code> in prompt.txt gets the whole course list, and <code>{{message}}</code> gets this test's learner message, for example "What is the fee for the Selenium course?". That's exactly what the real chatbot server would send.</span></div></li>
+      <li><span class="num">Ask</span><div><strong>It asks Gemini.</strong><span class="why">This is the only step that uses the internet. If Gemini can't answer, that test becomes ERROR.</span></div></li>
+      <li><span class="num">Grade</span><div><strong>It ticks the checklist.</strong><span class="why">Every check must say yes for PASS. One no means FAIL. For tests 4 to 7, one check is an llm-rubric: Promptfoo asks Gemini a second time to judge the reply, like a second teacher.</span></div></li>
+      <li><span class="num">Repeat</span><div><strong>It loops until all 7 messages are done.</strong><span class="why">Promptfoo asks up to 4 at a time, like 4 checkout lanes in a shop, so the whole run takes about 20 seconds.</span></div></li>
+      <li><span class="num">Report</span><div><strong>It prints the summary and saves the results.</strong><span class="why">The saved copy is what the browser viewer shows later.</span></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <span class="eyebrow">Zoom in</span>
+    <h2>One test, start to finish</h2>
+    <p>Test 2, "Selenium fee is correct", as it really ran.</p>
+    <div class="trace">
+      <div class="hop">
+        <span class="label">1 · Learner types</span>
+        <div class="val">What is the fee for the Selenium course?</div>
+      </div>
+      <div class="hop">
+        <span class="label">2 · Full prompt</span>
+        <div class="val">You are "Learner Guide"…
+RULES 1–8…
+COURSE LIST
+…Selenium with Java
+Fee: Rs. 18,000…
+LEARNER MESSAGE
+What is the fee for the Selenium course?</div>
+      </div>
+      <div class="hop">
+        <span class="label">3 · Gemini replies</span>
+        <div class="val">Hello! The fee for the Selenium with Java course is Rs. 18,000. …</div>
+      </div>
+      <div class="hop">
+        <span class="label">4 · Checklist</span>
+        <div class="check">
+          <span class="ok">✓ matches "18,?000"</span>
+          <span class="ok">✓ 130 words or fewer</span>
+        </div>
+      </div>
+      <div class="hop result">
+        <span class="label">5 · Result</span>
+        <span class="big">PASS</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Diagram 2 · handshake</span>
+    <h2>The handshake: who talks to whom</h2>
+    <p>A handshake is the back-and-forth between two programs. Promptfoo rings Gemini's doorbell, shows its library card (your API key) and asks the question. Gemini either answers or says why it won't. Solid arrows are requests; dashed arrows are replies.</p>
+    <div class="panel">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor You
+  participant T as Terminal
+  participant P as Promptfoo
+  participant F as Your files
+  participant G as Gemini (Google)
+  participant D as Saved results
+  participant B as Browser
+  You->>T: npx.cmd promptfoo eval -c learner_bot_eval/promptfooconfig.yaml
+  T->>P: Start Promptfoo
+  P->>F: Read the config, prompt.txt, courses.txt and .env
+  F-->>P: Tests, rules, course list and API key
+  loop Once for each of the 7 learner messages
+    P->>G: Here is my key and the full prompt
+    alt Key OK and model free
+      G-->>P: The reply, for example Rs. 18,000
+      P->>P: Check the reply against the rules
+      opt Tests 4 to 7 use llm-rubric
+        P->>G: Second teacher - does this reply follow the rule?
+        G-->>P: Yes or no, with a reason
+      end
+    else Key wrong
+      G-->>P: Error 400 or 403
+    else Model retired or busy
+      G-->>P: Error 404 or 503
+    end
+  end
+  P->>D: Save the results
+  P-->>T: Table plus passed, failed, errors
+  T-->>You: You read the summary
+  You->>T: npx.cmd promptfoo view
+  T->>P: Start the viewer on port 15500
+  P->>D: Load the saved results
+  You->>B: Open localhost:15500
+  B->>P: Ask for the results page
+  P-->>B: The PASS / FAIL table
+</pre>
+    </div>
+    <ol class="steps">
+      <li><span class="num">1 – 4</span><div><strong>Getting ready</strong><span class="why">Everything stays on your PC. Promptfoo only reads your files.</span></div></li>
+      <li><span class="num">5 – 11</span><div><strong>The handshake with Gemini</strong><span class="why">Step 5 is the knock on the door. Step 6 is a normal answer, and step 7 is Promptfoo grading it. Steps 8 and 9 are the second teacher, used only by tests 4 to 7. Steps 10 and 11 are the two ways the door stays shut: a wrong key, or a model that is retired or too busy.</span></div></li>
+      <li><span class="num">12 – 14</span><div><strong>Reporting</strong><span class="why">Results are saved, then printed in the terminal.</span></div></li>
+      <li><span class="num">15 – 20</span><div><strong>Viewing in the browser</strong><span class="why">A second, separate command. The viewer is a tiny website on your own PC, so it only works while that terminal stays open. Otherwise the browser says "This site can't be reached".</span></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <span class="eyebrow">On the wire</span>
+    <h2>What actually travels to Google</h2>
+    <p>Steps 5 and 6 above, written out. This is simplified, and the key is hidden.</p>
+    <div class="wire">
+      <figure>
+        <figcaption>Promptfoo sends (the knock)</figcaption>
+<pre><span class="k">POST</span> https://generativelanguage.googleapis.com
+     /v1beta/models/gemini-3.5-flash-lite:generateContent
+<span class="k">x-goog-api-key:</span> ••••••••••••••
+
+{
+  "contents": [{ "parts": [{ "text":
+    "You are \"Learner Guide\" ... RULES ...
+     COURSE LIST ... Fee: Rs. 18,000 ...
+     LEARNER MESSAGE
+     What is the fee for the Selenium course?" }] }]
+}</pre>
+      </figure>
+      <figure>
+        <figcaption>Gemini sends back (the answer)</figcaption>
+<pre><span class="k">200 OK</span>
+
+{
+  "candidates": [{
+    "content": { "parts": [{ "text":
+      "Hello! The fee for the Selenium with
+       Java course is Rs. 18,000. ..." }] }
+  }]
+}
+
+<span class="k">or, when it can't answer:</span>
+{ "error": { "code": 503,
+  "message": "...experiencing high demand..." } }</pre>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Reading the ending</span>
+    <h2>Three possible results</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Result</th><th>What happened</th><th>Setup working?</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip pass">PASS</span></td><td>Gemini answered and every check said yes</td><td>Yes</td><td>Nothing. You're done.</td></tr>
+          <tr><td><span class="chip fail">FAIL</span></td><td>Gemini answered, but at least one check said no</td><td>Yes. The test caught a bad answer, or the data changed.</td><td>Click the cell in the viewer to see which check failed and why</td></tr>
+          <tr><td><span class="chip err">ERROR</span></td><td>No answer came back from Gemini</td><td>No</td><td>Check the key in .env, wait if Google is busy, or keep gemini-3.5-flash-lite</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">For a tester, FAIL is the system working. ERROR is the one to fix.</p>
+  </section>
+
+</div>
+
+<!-- Draws the two diagrams above. Needs internet the first time the page opens. -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+</script>
+</body>
+</html>
